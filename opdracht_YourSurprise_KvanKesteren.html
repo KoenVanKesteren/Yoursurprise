@@ -1,0 +1,1011 @@
+
+<!DOCTYPE>
+<!--
+	
+	documentatie
+	------------
+	
+		gemaakt door K van Kesteren 17-6-2019 in opdracht van YourSurprise
+		
+		
+		werking:
+		
+			- retrieveLoop() haalt elke x minuten nieuwe data van de feed op
+				- de feed geeft alleen de wegen waar events voor zijn.
+				- om die reden wordt er bij elke iteratie gekeken of er nieuwe wegen zijn ipv een enkele nul-stand met alle wegen
+				
+			- executeQuery() verwijdert eventueel data die niet van vandaag is
+			- data van nieuw tijdstip toevoegen / vervangen
+			- localStorage toevoegen + listener triggeren
+			- output updaten 
+				indien:
+					- de gebruiker niet aan de slider heeft gezeten (!userTime)
+					- er data is met een nieuwer tijdstip
+				betekent:
+					- de schaal aanpassen
+					- nieuwe file-informatie aan de DOM en kaart toevoegen
+				
+				- outputData()
+					- alle bestaande html-elementen worden in de default staat gezet
+					- door gebruiker geopende elementen blijven zichtbaar
+					- kaartje wordt leeggemaakt
+					
+					- door alle aangeleverde wegen heenloopen
+					- indien beschikbaar alle files in een table zetten
+					- of
+						- table toevoegen aan bestaande div inclusief sideBar button
+						- nieuwe div met sideBar buttons maken en table toevoegen
+							- bij eerste x zetten als voorbeeld een weg met informatie openzetten en inzoomen op de kaart
+					- bij het aanmaken van de table wordt ook de file aan de kaart toegevoegd
+						- en krijgt de eerste cell een link met callback die het mogelijk maakt om naar de betreffende file op de kaart te navigeren
+						
+					- bij het aanmaken van de html wordt er voor elke weg met files de volgende onderdelen gemaakt:
+						- een knop voor in de sideBar die een callback meekrijgt om de inhoud al dan niet te tonen
+						- een div voor de inhoud waar de table met files aan toegevoegd kan worden en een header
+					
+			- kaartje:
+				- er kan op het kaartje worden genavigeerd naar de locatie van een file mbv de functie setMapView() 
+				- met de functie markTrafficJam() worden de files op de kaart gezet
+					- hierin wordt onderscheid gemaakt tussen 2 niveaus van intensiteit
+				- via clearMap() worden alle markeringen verwijderd
+			
+			- processSlider(): 
+				- er wordt gekeken naar de file informatie van het moment op of vlak voor de waarde van de schaal
+				- vervolgens wordt de output aangepast voor die data
+			
+			- setScale():
+				- de schaal wordt in z'n geheel aangemaakt
+					- voor de eerste keer
+					- of als er nieuwe data beschikbaar komt
+			
+			- initiele aanroep:
+				- kaartje wordt gemaakt mbv een token die aangevraagd kan worden via de site van leaflet.js
+				- de functie processSlider() wordt gekoppeld aan de slider
+				- er wordt een functie gekoppeld aan de localStorage
+				- de slider krijgt een schaal adhv de huidige tijd
+				- de loop voor het ophalen van de files wordt aangezet
+				
+				
+-->
+<html>
+	<head>
+		<title></title>
+		<link rel="shortcut icon" type="image/png" href="../../resources/images/myicon.png">
+		
+		<!-- libs etc. -->
+	    <script type="text/javascript" src = "../../js/jquery-2.2.3.min.js">					jquery					</script>
+		
+		<!-- leaflet voor maps -->
+		<link rel="stylesheet" href="https://unpkg.com/leaflet@1.5.1/dist/leaflet.css"		integrity="sha512-xwE/Az9zrjBIphAcBb3F6JVqxf46+CDLwfLMHloNu6KEQCAWi6HcDUbeOfBIptF7tcCzusKFjFw2yuvEpDL9wQ=="
+		crossorigin=""/>
+		<script src="https://unpkg.com/leaflet@1.5.1/dist/leaflet.js"		integrity="sha512-GffPMF3RvMeYyc1LWMHtK8EbPv0iNZ8/oTtHPx9/cc2ILxQ+u905qIwdpULaqDkyBKgOaB57QTMg7ztg8Jm2Og=="
+		crossorigin=""></script>
+	
+		<style>		
+			
+			html{
+				/*overflow-y: 			overlay;*/
+			}
+			
+			html, body {
+				width:  				100%;
+				height: 				100%;
+				margin: 				0px;
+				z-index: 				1;
+			}
+
+			div {
+				/*border: 				1px solid #AAAAAA;*/
+			}
+
+			table {
+				border-collapse: 		collapse;
+				table-layout: 			fixed;
+				width: 					100%;
+			}
+
+			table, th, td {
+				/*border: 				1px solid black;*/
+				padding:				6px;
+				text-align: 			left;
+			}
+			
+			a:link {
+				color: 					red;
+			}
+			
+			
+			/*
+				sideBar knoppen
+			*/
+			.collapsible {
+				background-color: 		#777;
+				color: 					white;
+				cursor: 				pointer;
+				padding: 				12px;
+				margin:					1px;
+				width: 					100%;
+				border: 				none;
+				text-align: 			left;
+				outline: 				none;
+				font-size: 				15px;
+			}
+
+			.active, .collapsible:hover {
+			  background-color: 		#555;
+			}
+			
+			
+
+			/*
+				table met inhoud
+			*/
+			.roadEntryDiv {
+				padding: 				0 6px;
+				display: 				none;
+				/* overflow: 				scroll;*/
+				background-color: 		#CCC;
+			}
+			
+			
+			/*
+				kaartje
+			*/
+			#mapid { height: 400px; }
+			
+			
+			/*
+				slider bij kaartje
+			*/
+			.slidecontainer {
+				width: 					100%; 		
+			}
+			
+			.slider {
+				-webkit-appearance: 	none;  		
+				appearance: 			none;
+				width: 					100%; 		
+				height: 				25px; 		
+				background: 			#d3d3d3; 	
+				outline: 				none; 		
+				opacity: 				0.7; 		
+				-webkit-transition: 	.2s; 		
+				transition: opacity 	.2s;
+			}
+
+			/* Mouse-over effects */
+			.slider:hover {
+				opacity: 				1;
+			}
+
+			/* The slider handle (use -webkit- (Chrome, Opera, Safari, Edge) and -moz- (Firefox) to override default look) */ 
+			.slider::-webkit-slider-thumb {
+				-webkit-appearance: 	none; 	
+				appearance: 			none;
+				width: 					25px; 		
+				height: 				25px; 			
+				background: 			#4CAF50; 	
+				cursor: 				pointer; 	
+			}
+
+			.slider::-moz-range-thumb {
+				width: 					25px; 		
+				height: 				25px; 		
+				cursor: 				pointer; 	
+			}
+			
+		</style>
+	</head>
+	<body bgcolor="#CCC">
+		
+		<header style="text-align: center; background: #999;border: 1px solid #000; ">
+			<h3>Koen's fileExplorer</h3>
+		</header>
+		
+		<div style="width: 100%; display: table;">
+			<div style="display: table-row">
+		
+				<div id="sideBar" style="width: 25%; display: table-cell; vertical-align: top;  text-align: left;"> Files:
+				</div>
+				
+				<!-- div voor kaartje en file informatie -->
+				<div style="margin-top: 10px; margin-left: 10px; margin-right: 50px; ">
+					<div style="display: table-cell;">
+					
+						<!-- het kaartje -->
+						<div id="mapid" style="width: 100%; height: 400px;"></div>
+					
+						<!-- slider -->
+						<div class="slidecontainer">
+							<table id="myRangeValues" style="font-size: 12px; width: 100%; margin-left: 3%">
+								<tr>
+									<td>00:00</td> 		
+									<td>00:00</td> 		
+									<td>00:00</td> 		
+									<td>00:00</td> 		
+									<td>00:00</td> 		
+									<td>00:00</td> 
+									<td>00:00</td> 		
+									<td>00:00</td> 		
+									<td>00:00</td>		
+									<td>00:00</td>		
+									<td>00:00</td>		
+									<td>00:00</td>
+									<td>00:00</td>
+								</tr>
+							</table>
+							<input type=range min=-60 max=0 value=0 step=5 list=tickmarks  style="width:100%; height: 25px; padding-left: 3%; padding-right: 3%;" id="myRange">
+							<datalist id=tickmarks>
+								<option>-60</option>		
+								<option>-55</option>	
+								<option>-50</option>	
+								<option>-45</option>	
+								<option>-40</option>	
+								<option>-35</option>
+								<option>-30</option>	
+								<option>-25</option>	
+								<option>-20</option>	
+								<option>-15</option>	
+								<option>-10</option>	
+								<option>-5</option>
+								<option>0</option>
+							</datalist>
+						</div>
+						<!-- 
+							content:
+								- div met
+								- ...
+						-->
+						<div id="content" >
+						</div>
+					</div>
+				</div>
+			</div>
+		</div>
+		
+		
+		<script type="text/javascript"> 
+			
+			$(document).ready( function() {
+
+				
+				/***************************************
+								launch
+				***************************************/
+			
+			
+				window.addEventListener(
+					'load',
+					function(event){
+						
+						var currentTime 				= null;
+						var lastUpdateTime				= null;
+						var userTime					= null;
+						var currentScaleTime			= null;
+						var doOnce						= true;
+						var MS_PER_MINUTE 				= 60000;
+						
+						
+						
+						function retrieveLoop( ){
+						
+							// 2) haal de data op
+							// 3) en voeg toe aan localStorage
+							executeQuery();
+							
+							// 4) herhaal elke x seconden
+							var delay	= 60000;	// 1 min	
+							//var delay	= 300000;	// 5 min
+							setTimeout( retrieveLoop, delay );			
+						}
+						
+						
+						
+						function executeQuery(){
+							
+							// feed ophalen en data meegeven aan localStorage
+							var url		= 'https://www.anwb.nl/feeds/gethf';
+							$.get(
+								url, 
+								function (data) {
+									/*** 
+										data opslaan in browser
+									*/
+									console.log( data );
+									
+									// eerst huidige data uitpakken
+									var roadEntryData			= {};
+									
+									var jsonData				= localStorage.roadEntryData;
+									
+									if( jsonData ){
+									
+										roadEntryData				= JSON.parse(jsonData);
+									}
+									
+									// data van niet-vandaag verwijderen
+									var MyDate 			= new Date();
+									var MyDateString;
+									MyDateString 		= MyDate.getFullYear()
+															+ ('0' + (MyDate.getMonth()+1)).slice(-2)
+															+ ('0' + MyDate.getDate()).slice(-2) + '';
+									$.each(	
+										roadEntryData, 
+										function(key, value) {
+											
+											console.log( Number(key.substring(0,8)), Number(MyDateString) );
+											if( Number(key.substring(0,8)) < Number(MyDateString) ){
+												delete roadEntryData[key];
+											}
+										}
+									);
+									
+									/*** 
+										nieuw opgehaalde data toevoegen onder key met datum + tijdstip	
+										- listener op localStorage voert eventueel outputData() uit
+									*/
+									// nieuwe update toevoegen
+									var dateKey					= ""+data.dateTime.replace(', ','').replace(':','')+"";
+									console.log( dateKey );
+									roadEntryData[ dateKey ] 	= data.roadEntries;
+									
+									// data weer inpakken
+									var newRoadEntryData		= JSON.stringify(roadEntryData);
+									
+									// localStorage updaten
+									localStorage.setItem( 'roadEntryData', newRoadEntryData );
+								}
+							);
+						}
+						
+						
+						
+						
+						function addStorageHandler(){
+							// localStorage listener toevoegen
+							var originalSetItem 	= localStorage.setItem;
+
+							localStorage.setItem = function() {
+								var event 				= new Event( 'itemInserted' );
+								document.dispatchEvent( event );
+								originalSetItem.apply( this, arguments );
+							}
+
+							var storageHandler = function(e) {
+								console.log( '' );
+								console.log( 'alter local storage' );
+								var jsonData	= localStorage.roadEntryData;
+								var data		= JSON.parse(jsonData);
+								
+								// alleen de laatste info pakken
+								var latestTime	= Object.keys(data).sort().pop();
+								var latestData 	= data[ latestTime ];
+								
+								currentTime		= latestTime;
+								console.log( currentTime );
+								
+								/*** 
+									output updaten 
+										indien:
+											- de gebruiker niet aan de slider heeft gezeten (!userTime)
+												- to do: vervangen door 'als de slider aan het eind staat'
+											- er data is met een nieuwer tijdstip
+										betekent:
+											- de schaal aanpassen
+											- nieuwe file-informatie aan de DOM en kaart toevoegen
+								*/
+								if( 
+									!userTime 
+									&& (
+										! lastUpdateTime
+										|| latestTime	!= lastUpdateTime 
+									)
+								){ 
+									lastUpdateTime 	= latestTime;
+									
+									setScale();
+									
+									outputData( latestData, mymap );
+								}
+							
+							}.bind( outputData, mymap );
+
+							document.addEventListener("itemInserted", storageHandler, false);
+						}
+						
+						
+						
+						
+						function outputData( data, map ){
+							/***
+								
+							*/
+							console.log( '' );
+							console.log( '' );
+							console.log( 'Update:', currentTime );
+							
+							//doOnce = true; nu aleen 1x bovenaan script
+							
+							var testCounter1 	= 0;
+							var testCounter2	= 0;
+							
+							// huidige content verwijderen:
+							resetOutput( map );
+						
+							/*** 
+								data uitlezen:
+							*/
+							var array			= [];
+							var roadEntries		= data;
+							
+							// Voor alle wegen ...
+							for( var i=0; i< roadEntries.length; i++ ){
+								
+								var trafficJams			= roadEntries[i].events.trafficJams;
+								
+								if( 
+									trafficJams.length > 0 
+								){
+									var numOfJams		= trafficJams.length;
+									var roadName		= roadEntries[i].road;
+									//console.log( roadName+" has "+numOfJams+" traffic jams" );
+									
+									// kijk of er al een bestaande sectie voor de road bestaat
+									var roadEntryDiv	= document.getElementById( roadName );
+									
+									// table met nieuwe info maken
+									var table			= createTable( trafficJams, map );
+									
+									/*** 
+										bestaande div veranderen
+											- table vervangen
+											- title en text veranderen 
+												- sideBar button 
+												- content div
+									*/
+									if( roadEntryDiv){
+										testCounter1++;
+										
+										replaceInDiv( roadEntryDiv, table, numOfJams );
+									}
+									/*** 
+										OF... 
+											nieuwe maken
+									*/
+									else{
+										testCounter2++;
+										
+										addToNewDiv( table, roadName, numOfJams, i );
+										
+										/*** 
+											- alleen eerste keer:
+												- kaartje op eerste file van eerste weg inzoomen
+												- table van eerste weg open zetten
+										*/
+										if( doOnce && map ){
+											setInitialOutput( map, trafficJams[0] );
+										}
+									}
+								}
+							}
+							
+							//console.log( testCounter1, testCounter2 );
+						}
+						
+						
+						
+						function resetOutput( map ){
+							
+							/*** 
+								zet huidige wegen naar default waarde
+								
+								- sideBar buttons:
+									- text: roadName + "(geen files)"
+									- onzichtbaar maken, tenzij: value='active'
+									
+								- contentDivs
+									- headerText: roadName + "(geen files)"
+									- table vervangen door een table met text: "geen files"
+							*/
+							
+							var sideBarButtons 				= document.getElementsByClassName("collapsible");
+							
+							for( var i=0; i< sideBarButtons.length; i++ ){
+								if( sideBarButtons[i].value === 'inactive' ){ 
+									sideBarButtons[i].style.display		= 'none';
+								}
+								
+								var newText						= sideBarButtons[i].id.split('-')[0]+' (geen files)';
+								sideBarButtons[i].innerHTML		= newText;
+							}
+							
+							var contentDivs 				= document.getElementsByClassName("roadEntryDiv");
+							
+							for( var i=0; i< contentDivs.length; i++ ){
+								var clnButton					= contentDivs[i].getElementsByTagName("button")[0];
+								var newText						= clnButton.id+' (geen files)';
+								clnButton.innerHTML				= newText;
+								// oude table verwijderen
+								var oldTable					= contentDivs[i].getElementsByTagName("table")[0];
+								contentDivs[i].removeChild(oldTable);
+								// default message (table) toevoegen
+								var table 						= document.createElement('table');
+								var row							= document.createElement('tr');
+								table.appendChild( row );
+								var cell						= createCell( 'geen files' );
+								row.appendChild( cell );
+								contentDivs[i].appendChild( table );
+							}
+							
+							// kaartje leegmaken
+							clearMap( map );
+						}
+						
+						
+						
+						/***
+						
+							output generenen
+								- createTable
+								- createTableHeader
+								- createLinkCell
+								- createCell
+								- addToNewDiv
+								- createCollapsibles
+								- setInitialOutput
+						*/
+						
+						function createTable( trafficJams, map ){	
+							/***
+								table met headers aanmaken
+							*/
+							
+							var table 	= document.createElement('table');
+							//table.setAttribute( 'border', "3" );
+							
+							var tr		= createTableHeader();
+							
+							table.appendChild(tr);
+							
+							updateContent( table, trafficJams, map );
+							
+							return table;
+						}
+						
+						
+						
+						function createTableHeader(){
+							var tr 				= document.createElement('tr');
+							tr.setAttribute( 'style','font-weight: bold; background-color: #cccccc;' );
+							
+							var from 			= createCell( 'from' );
+							tr.appendChild(from);
+							
+							var lat1 			= createCell( 'lat' );
+							tr.appendChild(lat1);
+							
+							var lon1 			= createCell( 'lon' );
+							tr.appendChild(lon1);
+							
+							var to 				= createCell( 'to' );
+							tr.appendChild(to);
+							
+							var lat2 			= createCell( 'lat' );
+							tr.appendChild(lat2);
+							
+							var lon2 			= createCell( 'lon' );
+							tr.appendChild(lon2);
+							
+							var startCell 		= createCell( 'start' );
+							tr.appendChild(startCell);
+							
+							var delayCell 		= createCell( 'delay' );
+							tr.appendChild(delayCell);
+							
+							var distanceCell 	= createCell( 'distance' );
+							tr.appendChild(distanceCell);
+							
+							return tr;
+						}
+						
+						
+						
+						function updateContent( table, trafficJams, map ){
+						
+							/*** 
+								- Rijen maken voor alle files op weg ...
+								- cellen maken...
+									- eerste cell bevat een link met een callback die naar de locatie van de file zoomt
+									
+								- file op de kaart markeren (hoort hier eigenlijk niet thuis)
+								[ ] to do:
+									- markTrafficJam() verplaatsen
+							*/
+							// 
+							for( var j = 0; j < trafficJams.length; j++ ){
+								
+								var trJam 		= document.createElement('tr');
+								trJam.setAttribute( 'style','background-color: #ebebe0;' );
+								
+								var linkCell 	= createLinkCell( trafficJams[j], map );
+								trJam.appendChild(linkCell);
+								
+								var lat1		= trafficJams[j].fromLoc.lat;
+								var lat1Cell 	= createCell( lat1 );
+								trJam.appendChild(lat1Cell);
+								
+								var lon1		= trafficJams[j].fromLoc.lon;
+								var lon1Cell 	= createCell( lon1 );
+								trJam.appendChild(lon1Cell);
+								
+								var to			=  trafficJams[j].to;
+								var toCell 		= createCell( to );
+								trJam.appendChild(toCell);
+								
+								var lat2		= trafficJams[j].toLoc.lat;
+								var lat2Cell 	= createCell( lat2 );
+								trJam.appendChild(lat2Cell);
+								
+								var lon2		= trafficJams[j].toLoc.lon;
+								var lon2Cell 	= createCell( lon2 );
+								trJam.appendChild(lon2Cell);
+
+								var startCell 	= createCell(  trafficJams[j].start );
+								trJam.appendChild(startCell);
+								
+								var delay		= trafficJams[j].delay;
+								var delayCell 	= createCell( delay );
+								trJam.appendChild(delayCell);
+								
+								var distanceCell 	= createCell(  trafficJams[j].distance );
+								trJam.appendChild(distanceCell);
+								
+								table.appendChild(trJam);
+								
+								// file op kaart zetten
+								markTrafficJam( map, lat1, lon1, lat2, lon2, delay );
+							}
+						}
+						
+						
+						
+						function createLinkCell( object, map ){
+							var td			= document.createElement('td');
+							var a			= document.createElement('a');
+							var textNode 	= document.createTextNode( object.from );
+							
+							a.appendChild( textNode );
+							a.title 		= "my title text";
+							a.href 			= "#";
+							
+							var lat1 		= object.fromLoc.lat;
+							var lon1 		= object.fromLoc.lon;
+							
+							var lat2 		= object.toLoc.lat;
+							var lon2 		= object.toLoc.lon;
+							
+							// callback toevoegen om in te zoomen
+							a.onclick		= function(){
+												setMapView( map, lat1, lon1, lat2, lon2 );
+											};
+							td.appendChild( a );		
+							
+							return td;
+						}
+						
+						
+						
+						function createCell( text ){
+							var td			= document.createElement('td');
+							var textNode 	= document.createTextNode( text );
+							td.appendChild( textNode );		
+							
+							return td;
+						}
+						
+						
+						
+						function addToNewDiv( element, title, numOfJams, index ){
+							
+							var sideBarButton 			= document.createElement("BUTTON");
+							
+							var text 					= title+"   ("+numOfJams+" files)";
+							var textNode 				= document.createTextNode(text);
+							sideBarButton.appendChild( textNode );
+							sideBarButton.className		= "collapsible";
+							sideBarButton.id			= title+'-side';
+							sideBarButton.value			= 'inactive';
+							
+								
+							var roadDiv					= document.createElement('div');
+							var innerDiv				= document.createElement('div');
+							innerDiv.className 			= "roadEntryDiv";
+							
+							innerDiv.id					= title;
+							roadDiv.className			= 'roadEntryHolder';
+							
+							sideBarButton.addEventListener(
+								"click", 
+								function(){
+									
+									var content 	= innerDiv;
+									if( this.value === "active" ){
+										this.value = 'inactive';
+										content.style.display 	= "none";
+									} 
+									else{
+										this.value = 'active';
+										content.style.display 	= "block";
+									}
+									console.log( this.value, this );
+								}
+							);
+							
+							document.getElementById( "sideBar" ).appendChild( sideBarButton );
+							
+							var mainDiv					= document.getElementById( "content" );
+							
+							// header van content
+							var header 					= document.createElement("BUTTON");
+							header.className			= "collapsible";
+							header.appendChild( document.createTextNode(text) );
+							header.id					= title;
+							
+							roadDiv.appendChild( innerDiv );
+							
+							innerDiv.appendChild( header );	
+							innerDiv.appendChild( element );	
+							
+							mainDiv.appendChild( roadDiv );
+  
+							return innerDiv;
+						}				
+
+
+
+						function replaceInDiv( div, table, numOfJams ){
+							
+							var oldTable				= div.getElementsByTagName("table")[0];
+							div.removeChild( oldTable );
+							
+							div.appendChild( table );
+							var id 						= div.id;
+							
+							var text 					= id+"   ("+numOfJams+" files)";
+							
+							var sideBarButton			= document.getElementById( id+'-side' );
+							sideBarButton.innerHTML		= text;
+							sideBarButton.style.display	= 'block';
+							var clnButton 				= div.getElementsByTagName("button")[0];
+							clnButton.innerHTML			= text;		
+						}						
+						
+						
+						
+						function setInitialOutput( map, trafficJam ){
+							
+							// activeer de eerste weg als voorbeeld
+							var lat1 	= trafficJam.fromLoc.lat;
+							var lon1 	= trafficJam.fromLoc.lon;
+							
+							var lat2 	= trafficJam.toLoc.lat;
+							var lon2 	= trafficJam.toLoc.lon;
+							
+							// zoom in op de kaart
+							setMapView( map, lat1, lon1, lat2, lon2 );
+							
+							// toggle de knop van de eerste weg
+							document.getElementsByClassName("collapsible")[0].click();
+							
+							// zet de vlag zodat dit niet meer gebeurt
+							doOnce 		= false;
+						}
+						
+						
+						
+						/***
+							functionaliteit voor kaart:
+							
+								- zoomen naar locatie 
+								- file markeren op kaart
+								- files verwijderen van kaart
+						*/
+						
+						function setMapView( map, lat1, lon1, lat2, lon2 ){
+							
+							map.setView([(lat1+lat2)/2,(lon1+lon2)/2], 12);
+						}
+
+
+
+						function markTrafficJam( map, lat1, lon1, lat2, lon2, delay ){
+							
+							if( lat1 && lon1 && lat2 && lon2 ){
+								var latlngs 	= [
+													[lat1, lon1],
+													[lat2, lon2]
+												];
+								// kleur voor intenstiteit file				
+								var color		= 'orange';				
+								if( delay > 600 ){ 
+									color 			= 'red';
+								}
+								
+								var polyline 	= L.polyline( latlngs, { color: color } ).addTo( map );
+								
+								/*** 
+									indien gewenst: 
+										- zoom the map to the polyline
+								*/
+								//	map.fitBounds(polyline.getBounds());
+							}
+						}										
+						
+						
+						
+						function clearMap( map ) {
+							for( i in map._layers ){
+								if( map._layers[i]._path != undefined ){
+									try {
+										map.removeLayer( map._layers[i] );
+									}
+									catch(e) {
+										console.log( "problem with " + e + map._layers[i] );
+									}
+								}
+							}
+						}
+
+
+						
+						/*** 
+							slider callback
+						*/
+						
+						function processSlider() {
+							console.log( '' );
+							console.log( '' );
+							console.log( '' );
+							console.log( 'slider:' );
+							
+							var time			= 0;
+							var timeKey			= '0';
+							
+							var sliderDate		= new Date( currentScaleTime - (-this.value * MS_PER_MINUTE));
+							var scaleValue		= sliderDate.getHours()*100 + (sliderDate.getMinutes());
+							
+							console.log( 'to ', scaleValue );
+							
+							userTime			= this.value;
+							
+							var jsonData		= localStorage.roadEntryData;
+							var data			= JSON.parse(jsonData);
+							var keys 			= [];
+							for( var k in data ){ 
+								keys.push(k);
+							}
+							
+							
+							// pak het laatste tijdstip óp of vóór de slider-waarde
+							for (var i=0; i< keys.length; i++) {
+								
+								var dateTime					= ""+keys[i].slice(-4)+"";
+								console.log( dateTime );
+								if( scaleValue >= Number(dateTime) ){
+									timeKey = keys[i];
+									time	= dateTime;
+								}
+							}
+							
+							console.log( Number(time) );
+							
+							// indien tijdstip is veranderd:
+							if( timeKey != currentTime ){
+								//console.log( 'set new output', timeKey );
+								currentTime		= timeKey;
+								var newData		= [];
+								if( currentTime != '0' ){
+									newData	= data[ timeKey ];
+								}										
+								outputData( newData, mymap );
+								return;
+							}
+						}
+						
+						
+						
+						/*** 
+							bepaal de eerste waarde voor de scale
+						*/
+						function setScale(){
+						
+							
+							var scaleValues 		= document.getElementById("myRangeValues").getElementsByTagName("td");
+							console.log( scaleValues );
+						
+							// tijdelijk hardgecodeerde tijd
+							var MyDate 			= new Date();
+							// hardgecodeerde datum voor snapShot: var MyDate 				= new Date("June 14, 2019 14:35:00");
+							
+							var interval		= 5;
+							var restMinuten		= interval - MyDate.getMinutes()%interval;
+							console.log( restMinuten );
+							currentScaleTime 	= new Date( MyDate - ( -restMinuten * MS_PER_MINUTE ) );
+							
+							for ( var i=0; i< scaleValues.length; i++ ) {
+								
+								var myStartDate = new Date( currentScaleTime - interval * (scaleValues.length - i -1) * MS_PER_MINUTE);
+								
+								var scaleTime 		= ('0' + (myStartDate.getHours())).slice(-2)
+													+ ':'+ ('0' + myStartDate.getMinutes()).slice(-2) + '';
+																
+								scaleValues[i].innerHTML = scaleTime;
+								
+							}
+							
+							console.log( scaleTime.replace(':', '' ) );
+							
+							slider.value	= scaleTime.replace(':', '' );
+						}	
+
+						
+						
+						/*** 
+							kaartje instellen
+							
+							- accessToken moet aangevraagd worden 
+							
+						*/
+						
+						var mymap 			= L.map('mapid');
+						var accessToken		= 'pk.eyJ1Ijoia29lbmlvIiwiYSI6ImNqd3J2ODlkdDAyenU0M28ybjVscHM1aHgifQ.CCL4x7-vKuFstOLT7tW2KA';
+						
+						L.tileLayer(
+							'https://api.tiles.mapbox.com/v4/{id}/{z}/{x}/{y}.png?access_token={accessToken}', {
+								attribution: 	'Map data &copy; <a href="https://www.openstreetmap.org/">OpenStreetMap</a> contributors, <a href="https://creativecommons.org/licenses/by-sa/2.0/">CC-BY-SA</a>, Imagery © <a href="https://www.mapbox.com/">Mapbox</a>',
+								maxZoom: 		18,
+								id: 			'mapbox.streets',
+								accessToken: 	accessToken
+							}
+						).addTo( mymap );
+						
+						
+					
+						
+						
+						
+						/***
+							listeners instellen
+								- op slider
+								- op local storage
+						*/
+						
+						// op slider...
+						var slider 		= document.getElementById("myRange");
+						slider.oninput 	= processSlider;
+						
+						// op localStorage...
+						addStorageHandler();
+
+
+						/*** 
+							initiële scale instellen
+						*/
+						setScale();
+						
+						
+						/*** 
+							voer de loop uit voor het ophalen van de data
+						*/
+						retrieveLoop( );
+						
+					}
+				);
+			});
+			
+		</script>
+		
+	</body>
+</html>
+
+
