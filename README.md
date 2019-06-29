@@ -1,62 +1,101 @@
 documentatie
 ------------
 
-	gemaakt door K van Kesteren 17-6-2019 in opdracht van YourSurprise
+	gemaakt door K van Kesteren -6-2019 in opdracht van YourSurprise
 	
 	
-	werking:
-	
-		- retrieveLoop() haalt elke x minuten nieuwe data van de feed op
-			- de feed geeft alleen de wegen waar events voor zijn.
-			- om die reden wordt er bij elke iteratie gekeken of er nieuwe wegen zijn ipv een enkele nul-stand met alle wegen
+		V2
+		
+			Bijlage:
 			
-		- executeQuery() verwijdert eventueel data die niet van vandaag is
-		- data van nieuw tijdstip toevoegen / vervangen
-		- localStorage toevoegen + listener triggeren
-		- output updaten 
-			indien:
-				- de gebruiker niet aan de slider heeft gezeten (!userTime)
-				- er data is met een nieuwer tijdstip
-			betekent:
-				- de schaal aanpassen
-				- nieuwe file-informatie aan de DOM en kaart toevoegen
-			
-			- outputData()
-				- alle bestaande html-elementen worden in de default staat gezet
-				- door gebruiker geopende elementen blijven zichtbaar
-				- kaartje wordt leeggemaakt
+				- diagram met classes
 				
-				- door alle aangeleverde wegen heenloopen
-				- indien beschikbaar alle files in een table zetten
-				- of
-					- table toevoegen aan bestaande div inclusief sideBar button
-					- nieuwe div met sideBar buttons maken en table toevoegen
-						- bij eerste x zetten als voorbeeld een weg met informatie openzetten en inzoomen op de kaart
-				- bij het aanmaken van de table wordt ook de file aan de kaart toegevoegd
-					- en krijgt de eerste cell een link met callback die het mogelijk maakt om naar de betreffende file op de kaart te navigeren
+			Algehele werking:
+				
+				- De DataManager haalt periodiek de feed op:
+					- data wordt opgeslagen in de browser
+					- nieuwe informatie wordt in de vorm van een Snapshot toegevoegd
+						- Een Snapshot bestaat uit 1 of meer objecten van het type RoadEntry
+							- Een RoadEntry bestaat uit 1 of meer objecten van het type TrafficJam
+					- listeners worden geïnformeerd:
+						- ViewController
+							- zet de nieuwe snapshot om in een reeks RoadViews
+						- SnapshotSelector
+							- de schaal van de slider wordt aangepast
 					
-				- bij het aanmaken van de html wordt er voor elke weg met files de volgende onderdelen gemaakt:
-					- een knop voor in de sideBar die een callback meekrijgt om de inhoud al dan niet te tonen
-					- een div voor de inhoud waar de table met files aan toegevoegd kan worden en een header
+				- aanpassing slider
+					- triggert de SnapshotSelector
+						- geeft de waarde door aan een listener (zouden er in principe meer kunnen zijn) via processSelector()
+							- de listener is in dit geval de ViewController. Die voert een update uit met de doorgegeven waarde
+					
+				- de ViewController:
+					- Zet de data van een enkele Snapshot om in RoadViews
+					- kan op 2 manieren geupdatet worden:
+						- dmv nieuwe data vanuit de DataManager
+						- doordat de gebuiker de slider aanpast
+					- RoadView is de representatie van een RoadEntry in de app
+						- RoadView bestaat uit:
+							- een sideBarButton voor het al dan niet tonen van de file-informatie in de content sectie
+							- een ContentView met header en ContentTable
+							- een markering op de kaart via de MapController
+					
 				
-		- kaartje:
-			- er kan op het kaartje worden genavigeerd naar de locatie van een file mbv de functie setMapView() 
-			- met de functie markTrafficJam() worden de files op de kaart gezet
-				- hierin wordt onderscheid gemaakt tussen 2 niveaus van intensiteit
-			- via clearMap() worden alle markeringen verwijderd
+			
+	
 		
-		- processSlider(): 
-			- er wordt gekeken naar de file informatie van het moment op of vlak voor de waarde van de schaal
-			- vervolgens wordt de output aangepast voor die data
+		V1
 		
-		- setScale():
-			- de schaal wordt in z'n geheel aangemaakt
-				- voor de eerste keer
-				- of als er nieuwe data beschikbaar komt
-		
-		- initiele aanroep:
-			- kaartje wordt gemaakt mbv een token die aangevraagd kan worden via de site van leaflet.js
-			- de functie processSlider() wordt gekoppeld aan de slider
-			- er wordt een functie gekoppeld aan de localStorage
-			- de slider krijgt een schaal adhv de huidige tijd
-			- de loop voor het ophalen van de files wordt aangezet
+			- retrieveLoop() haalt elke x minuten nieuwe data van de feed op
+				- de feed geeft alleen de wegen waar events voor zijn.
+				- om die reden wordt er bij elke iteratie gekeken of er nieuwe wegen zijn ipv een enkele nul-stand met alle wegen
+				
+			- executeQuery() verwijdert eventueel data die niet van vandaag is
+			- data van nieuw tijdstip toevoegen / vervangen
+			- localStorage toevoegen + listener triggeren
+			- output updaten 
+				indien:
+					- de gebruiker niet aan de slider heeft gezeten (!userTime)
+					- er data is met een nieuwer tijdstip
+				betekent:
+					- de schaal aanpassen
+					- nieuwe file-informatie aan de DOM en kaart toevoegen
+				
+				- outputData()
+					- alle bestaande html-elementen worden in de default staat gezet
+					- door gebruiker geopende elementen blijven zichtbaar
+					- kaartje wordt leeggemaakt
+					
+					- door alle aangeleverde wegen heenloopen
+					- indien beschikbaar alle files in een table zetten
+					- of
+						- table toevoegen aan bestaande div inclusief sideBar button
+						- nieuwe div met sideBar buttons maken en table toevoegen
+							- bij eerste x zetten als voorbeeld een weg met informatie openzetten en inzoomen op de kaart
+					- bij het aanmaken van de table wordt ook de file aan de kaart toegevoegd
+						- en krijgt de eerste cell een link met callback die het mogelijk maakt om naar de betreffende file op de kaart te navigeren
+						
+					- bij het aanmaken van de html wordt er voor elke weg met files de volgende onderdelen gemaakt:
+						- een knop voor in de sideBar die een callback meekrijgt om de inhoud al dan niet te tonen
+						- een div voor de inhoud waar de table met files aan toegevoegd kan worden en een header
+					
+			- kaartje:
+				- er kan op het kaartje worden genavigeerd naar de locatie van een file mbv de functie setMapView() 
+				- met de functie markTrafficJam() worden de files op de kaart gezet
+					- hierin wordt onderscheid gemaakt tussen 2 niveaus van intensiteit
+				- via clearMap() worden alle markeringen verwijderd
+			
+			- processSlider(): 
+				- er wordt gekeken naar de file informatie van het moment op of vlak voor de waarde van de schaal
+				- vervolgens wordt de output aangepast voor die data
+			
+			- setScale():
+				- de schaal wordt in z'n geheel aangemaakt
+					- voor de eerste keer
+					- of als er nieuwe data beschikbaar komt
+			
+			- initiele aanroep:
+				- kaartje wordt gemaakt mbv een token die aangevraagd kan worden via de site van leaflet.js
+				- de functie processSlider() wordt gekoppeld aan de slider
+				- er wordt een functie gekoppeld aan de localStorage
+				- de slider krijgt een schaal adhv de huidige tijd
+				- de loop voor het ophalen van de files wordt aangezet

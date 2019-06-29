@@ -1,0 +1,106 @@
+
+<!DOCTYPE>
+<!--
+	
+	documentatie: zie 'README.md'
+-->
+<html>
+	<head>
+		<title></title>
+		<link rel="shortcut icon" type="image/png" href="../resources/myicon.png">
+		<link rel="stylesheet" type="text/css" href="../css/style.css" media="screen" />
+		
+		<!-- libs etc. -->
+	    <script type="text/javascript" src = "../js/jquery-2.2.3.min.js">					jquery					</script>
+		
+		<!-- leaflet voor maps -->
+		<link rel="stylesheet" href="https://unpkg.com/leaflet@1.5.1/dist/leaflet.css"		integrity="sha512-xwE/Az9zrjBIphAcBb3F6JVqxf46+CDLwfLMHloNu6KEQCAWi6HcDUbeOfBIptF7tcCzusKFjFw2yuvEpDL9wQ=="
+		crossorigin=""/>
+		<script src="https://unpkg.com/leaflet@1.5.1/dist/leaflet.js"		integrity="sha512-GffPMF3RvMeYyc1LWMHtK8EbPv0iNZ8/oTtHPx9/cc2ILxQ+u905qIwdpULaqDkyBKgOaB57QTMg7ztg8Jm2Og=="
+		crossorigin=""></script>
+		
+		<script type="text/javascript" src = "../js/app.js">				app				</script>
+		<script type="text/javascript" src = "../js/dataManager.js">		dataManager		</script>
+		<script type="text/javascript" src = "../js/viewController.js">		viewController	</script>
+		<script type="text/javascript" src = "../js/snapshotSelector.js">	snapshotSelector</script>
+		<script type="text/javascript" src = "../js/mapController.js">		mapController	</script>
+		<script type="text/javascript" src = "../js/snapshot.js">			snapshot		</script>
+		<script type="text/javascript" src = "../js/roadEntry.js">			roadEntry		</script>
+		<script type="text/javascript" src = "../js/trafficJam.js">			trafficJam		</script>
+		<script type="text/javascript" src = "../js/roadView.js">			roadView		</script>
+		<script type="text/javascript" src = "../js/contentTable.js">		contentTable	</script>
+		<script type="text/javascript" src = "../js/contentView.js">		contentView		</script>
+		<script type="text/javascript" src = "../js/sideBarButton.js">		sideBarButton	</script>	
+	</head>
+	
+	<body bgcolor="#CCC">
+		
+		<header style="text-align: center; background: #999;border: 1px solid #000; ">
+			<h3>Koen's fileExplorer</h3>
+		</header>
+		
+		<div style="width: 100%; display: table;">
+			<div style="display: table-row">
+		
+				<div id="sideBar" style="width: 25%; display: table-cell; vertical-align: top;  text-align: left;"> Files:
+				</div>
+				
+				<!-- div voor kaartje en file informatie -->
+				<div style="margin-top: 10px; margin-left: 10px; margin-right: 50px; ">
+					<div style="display: table-cell;">
+					
+						<!-- het kaartje -->
+						<div id="mapid" style="width: 100%; height: 400px;"></div>
+					
+						<!-- slider -->
+						<div class="slidecontainer">
+							<table id="myRangeValues" style="font-size: 12px; width: 100%; margin-left: 3%">
+								<tr>
+									<td>00:00</td> 		
+									<td>00:00</td> 		
+									<td>00:00</td> 		
+									<td>00:00</td> 		
+									<td>00:00</td> 		
+									<td>00:00</td> 
+									<td>00:00</td> 		
+									<td>00:00</td> 		
+									<td>00:00</td>		
+									<td>00:00</td>		
+									<td>00:00</td>		
+									<td>00:00</td>
+									<td>00:00</td>
+								</tr>
+							</table>
+							<input type=range min=-60 max=0 value=0 step=5 list=tickmarks  style="width:100%; height: 25px; padding-left: 3%; padding-right: 3%;" id="myRange">
+							<datalist id=tickmarks>
+								<option>-60</option>		
+								<option>-55</option>	
+								<option>-50</option>	
+								<option>-45</option>	
+								<option>-40</option>	
+								<option>-35</option>
+								<option>-30</option>	
+								<option>-25</option>	
+								<option>-20</option>	
+								<option>-15</option>	
+								<option>-10</option>	
+								<option>-5</option>
+								<option>0</option>
+							</datalist>
+						</div>
+						<!-- 
+							content:
+								- div met
+								- ...
+						-->
+						<div id="content" >
+						</div>
+					</div>
+				</div>
+			</div>
+		</div>
+
+	</body>
+</html>
+
+
