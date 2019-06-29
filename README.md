@@ -1,7 +1,7 @@
 documentatie
 ------------
 
-	gemaakt door K van Kesteren -6-2019 in opdracht van YourSurprise
+	gemaakt door K van Kesteren 29-6-2019 in opdracht van YourSurprise
 	
 	
 		V2
