@@ -4,7 +4,7 @@ documentatie
 	gemaakt door K van Kesteren 29-6-2019 in opdracht van YourSurprise
 	
 	
-		V2
+		versie 2
 		
 			Bijlage:
 			
@@ -19,11 +19,11 @@ documentatie
 							- Een RoadEntry bestaat uit 1 of meer objecten van het type TrafficJam
 					- listeners worden geïnformeerd:
 						- ViewController
-							- zet de nieuwe snapshot om in een reeks RoadViews
+							- maakt de nieuwe snapshot zichtbaar voor de gebruiker
 						- SnapshotSelector
-							- de schaal van de slider wordt aangepast
+							- de schaal van de slider wordt aangepast adhv de huidige tijd
 					
-				- aanpassing slider
+				- Gebruik van slider
 					- triggert de SnapshotSelector
 						- geeft de waarde door aan een listener (zouden er in principe meer kunnen zijn) via processSelector()
 							- de listener is in dit geval de ViewController. Die voert een update uit met de doorgegeven waarde
@@ -35,15 +35,17 @@ documentatie
 						- doordat de gebuiker de slider aanpast
 					- RoadView is de representatie van een RoadEntry in de app
 						- RoadView bestaat uit:
-							- een sideBarButton voor het al dan niet tonen van de file-informatie in de content sectie
-							- een ContentView met header en ContentTable
+							- een sideBarButton voor het al dan niet tonen van de file-informatie 
+							- een ContentView object:
+								- voor het zichtbaar maken van de informatie in de content sectie van de app
+								- bestaat uit een header en ContentTable object met de file-informatie
 							- een markering op de kaart via de MapController
 					
 				
 			
 	
 		
-		V1
+		versie 1
 		
 			- retrieveLoop() haalt elke x minuten nieuwe data van de feed op
 				- de feed geeft alleen de wegen waar events voor zijn.
